@@ -1,0 +1,2 @@
+"0","data.plot = data.frame(model = c('lr','knn1','knn3','knn5','nb','svm.radial','svm.sigmoid','dtree.default','dtree.prune','ada'), fscore = c(mat.lr[4],mat.knn1[4],mat.knn3[4],mat.knn5[4],mat.nb[4],mat.svm.radial[4],mat.svm.sigmoid[4],mat.dtree.default[4],mat.dtree.prune[4],mat.ada[4]))"
+"0","ggplot(data.plot,aes(model,fscore,fill = model)) + geom_bar(stat = ""identity"") + ggtitle(""FScore"")"

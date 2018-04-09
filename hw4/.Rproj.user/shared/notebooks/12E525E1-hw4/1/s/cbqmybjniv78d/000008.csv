@@ -1,0 +1,6 @@
+"0","evaluation.data = list(kmeans.senator,hc.single,hc.complete,hc.average)"
+"0","evaluation.list = lapply(evaluation.data, function(f)as.matrix(c(cluster.purity(f,congress$party),cluster.entropy(f,congress$party))))"
+"0","evalutaion.table <- data.frame(lapply(evaluation.list,as.double))"
+"0","names(evalutaion.table) <- c('kmeans','hc.single','hc.complete','hc.average')"
+"0","row.names(evalutaion.table) <- c('purity','entropy')"
+"0","evalutaion.table"

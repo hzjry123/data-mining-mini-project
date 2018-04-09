@@ -1,0 +1,2 @@
+"0","  #apply h-cluster with single link, k = 3"
+"0","  hc=my.hcluster(stock,""single"",k=3)"

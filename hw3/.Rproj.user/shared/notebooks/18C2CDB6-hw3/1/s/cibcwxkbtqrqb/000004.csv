@@ -1,0 +1,4 @@
+"0","#Generate two bar charts, one for F-score and one for AUC,that allow for visually comparing different classificationtechniques."
+"0","#generate plot data"
+"0","data.plot = data.frame(model = c('lr','knn1','knn3','knn5','nb','svm.radial','svm.sigmoid','dtree.default','dtree.prune','ada'), auc = c(mat.lr[5],mat.knn1[5],mat.knn3[5],mat.knn5[5],mat.nb[5],mat.svm.radial[5],mat.svm.sigmoid[5],mat.dtree.default[5],mat.dtree.prune[5],mat.ada[5]))"
+"0","ggplot(data.plot,aes(model,auc,fill = model)) + geom_bar(stat = ""identity"") + ggtitle(""AUC Bar"")"

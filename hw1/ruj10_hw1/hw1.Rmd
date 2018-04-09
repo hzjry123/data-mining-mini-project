@@ -1,0 +1,236 @@
+---
+title: "Hw1"
+output: html_document
+---
+
+name: ruoyu jin 
+pittid: ruj10
+
+##Task 
+Task: analyze dataset “Student Performance”. The objective is to explain the final grade (G3) in Math course in terms of the provided attributes.  
+
+### Task
+####1.Q:
+Read the data description.Check if there is missing value.Identify and report response variable and predictors (also called explanatory variables or features). Report the numerical variables and categorical variables in the dataset.  
+
+####A:
+* Missing Value: none  
+* Response: G3 - final grade (numeric: from 0 to 20, output target)
+* predictors: 
+```{r}
+student <- read.csv("student-mat.csv",header = TRUE, sep = ";")
+names(student[,-length(student)])
+```
+* numerical:  age, Medu, Fedu, traveltime, studytime, failures, famrel, freetime, goout, Dalc, Walc, health, absences, G1, G2, G3
+* categorical:  
+    * binary: school,sex,address, famsize,Pstatus, schoolsup, famsup, paid, activities, nursery, higher, internet, romantic
+    * nominal: Mjob, Fjob, reason, guardian  
+    
+####2. Q:
+Explore the data set,and generate both statistical and graphical summary. To simplify the task, only consider the following 10 variables in this exploration: age, address, Pstatus, activities, higher, internet, absences, G1, G2, G3.  
+  **Qa**. Generate a summary table for the numerical variables. For each one, list: **variable name, mean, median, 1st quartile, 3rd quartile, and standard deviation**.
+  
+####A:
+  numerical variables: **age, absences, G1, G2, G3**
+```{r}
+summary1 <- apply(student[,c("age","absences","G1","G2","G3")], 2, summary)
+sd <-apply(student[,c("age","absences","G1","G2","G3")], 2, sd)
+result_a <- rbind(summary1,sd)
+result_a
+```
+
+####Qb.
+For numerical variables, plot the density distribution. Describe whether the variable has a normal distribution or certain type of skew distribution.  
+
+####A: 
+```{r}
+par(mfrow=c(2,3))
+plot(density(student$age), main = "age")
+plot(density(student$absences),main = "absences")
+plot(density(student$G1),main="G1")
+plot(density(student$G2),main="G2")
+plot(density(student$G3),main="G3")
+```
+  
+  age:  postitive distribution  
+  absences: positive skew distribution  
+  G1: normal distribution  
+  G2: normal distribution  
+  G3: normal distribution  
+  
+####Qc.
+For each numerical predictor, describe its relationship with the response variable through correlation and scatterplot.
+
+####A:
+```{r}
+numerical_data = as.data.frame(student[,c("G3", "G1",
+                                     "G2", "absences", "age","studytime")])
+cor(numerical_data)
+```
+  
+```{r}
+cor(student$G3,student$G2)
+library(ggplot2)
+ggplot(student,aes(x=G2,y=G3))+geom_point()
+```
+```{r}
+cor(student$G3,student$G1)
+library(ggplot2)
+ggplot(student,aes(x=G1,y=G3))+geom_point()
+```
+  
+```{r}
+cor(student$G3,student$age)
+library(ggplot2)
+ggplot(student,aes(x=age,y=G3))+geom_point()
+```
+
+```{r}
+cor(student$G3,student$absences)
+library(ggplot2)
+ggplot(student,aes(x=absences,y=G3))+geom_point()
+```
+
+####Qd:
+For each categorical predictor, generate their conditional density plot of response variable. Hint: Plot the density of response variable into multiple distributions separated by the predictor’s categories, on the same figure. Use different colors or line shapes to differentiate categories. Make sure to use the proper variable “type” for the categorical variables before plotting.  
+
+####A:  
+categorical : address, Pstatus, activities, higher, internet,
+```{r}
+library(ggplot2)
+ggplot(student,aes(x = G3,fill= address))+geom_density(alpha = 0.5) 
+```
+```{r}
+library(ggplot2)
+ggplot(student,aes(x = G3,fill= Pstatus))+geom_density(alpha = 0.5) 
+```
+```{r}
+library(ggplot2)
+ggplot(student,aes(x = G3,fill= activities))+geom_density(alpha = 0.5) 
+```
+```{r}
+library(ggplot2)
+ggplot(student,aes(x = G3,fill= higher))+geom_density(alpha = 0.5) 
+```
+```{r}
+library(ggplot2)
+ggplot(student,aes(x = G3,fill= internet))+geom_density(alpha = 0.5) 
+```
+  
+####Qe:
+(extra points) Compare and describe whether the response variable is significantly different for students with and without extra-curricular activities.  
+
+####A:
+From the plot G3~activity we can see student with extra-curricular activities are more likely to have high G3.
+But that is not sigificantly I think.
+     
+####3.  
+  Apply regression analysis on the data.Evaluate the model as well as the impact of different predictors.
+  
+####Qa. 
+Use all predictors in a standard linear regression model to predict the response variable. Report the model performance using R2, adjusted R2 and RMSE. Interpret the regression result.
+```{r}
+fit = lm(G3~.,data=student)
+summary(fit)
+```
+
+####Q 
+Report the model performance using R2, adjusted R2 and RMSE. Interpret the regression result.
+
+####A
+R2 and adjusted R2 are both high and RMSE is low, so the model fit well!
+according to the regression coefficients, G1, G2, absences, famrel have high weight compared to other predictors.
+```{r}
+model.mse = mean(residuals(fit)^2)
+rmse = sqrt(model.mse)
+rmse
+```
+
+####Qb
+Compare the standard linear regression models with three different set of predictors:  
+* i. (Set A) school, sex, age, address, Pstatus, Medu, Fedu, Mjob, Fjob, traveltime, studytime, failures, absences, G1, G2.  
+* ii. (Set B) school, sex, age, studytime, failures, absences, G1, G2.  
+* iii. (Set C) school, sex, age, address, Pstatus, Medu, Fedu, Mjob, Fjob, traveltime, G1, G2.
+Evaluate which model performs better using out-of-sample RMSE. Hint: Implement leave-one-out cross-validation for out-of-sample evaluation.  
+
+####A:
+```{r}
+n = length(student)
+error_A = dim(n)
+error_B = dim(n)
+error_C = dim(n)
+for(k in 1:n){
+
+	train1 = c(1:n)
+  train = train1[train1 != k]
+  fit_A = lm(G3~school + sex + age + address + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + studytime + failures + absences + G1 + G2,data = student)
+  fit_B = lm(G3~school + sex + age + failures + absences + G1 + G2,data = student)
+  fit_C = lm(G3~school + sex + age + address + Pstatus + Medu + Fedu + Mjob + Fjob + traveltime + G1 + G2,data = student)
+  pred_A = predict(fit_A,newdat=student[-train,])
+  pred_B = predict(fit_B,newdat=student[-train,])
+  pred_C = predict(fit_C,newdat=student[-train,])
+	obs = student$G3[-train]
+  error_A[k] = obs[1]-pred_A[1]
+  error_B[k] = obs[1]-pred_B[1]
+  error_C[k] = obs[1]-pred_C[1]
+}
+  sqrt(mean(error_A^2))
+  sqrt(mean(error_B^2))
+  sqrt(mean(error_C^2))
+```
+
+
+RMSE: Set_A > Set_B > Set_C, but the difference is quite small, so their performance are equally.   
+
+####Qb:
+build two different non-linear regression models with the predictors in SET C". Just pick up some predictors you like, not necessarily all of them.
+ Hint: Use poly, locfitor other appropriate packages for non-linear regression models. At least one of the predictors should have non-linear relationship with the response variable in a non-linear model.
+ 
+####A:
+
+####First model: poly with backward to get the best predictors.
+
+```{r}
+library(MASS)
+back = lm(formula = G3 ~ poly(absences, degree = 2) + ., data = student)
+stepAIC(back, direction="backward")
+```
+
+```{r}
+sk = lm(formula = G3 ~ poly(absences, degree = 2) + school + age + 
+    failures + activities + romantic + famrel + G1 + G2, data = student)
+summary(sk)
+```
+
+####Secnod Model: Lasso
+```{r}
+library(lars)
+lasso_data = data.matrix((student[,-length(student)]))
+lasso_model = lars( x=lasso_data,y=student$G3,trace = TRUE)
+lasso_model
+```
+
+#### Qd:  
+From the previous answers,identify your best model,and identify the most important predictor in the model. Explain how you determine the importance of the predictors.
+
+####A:
+
+####My best model:
+
+I use backward feature selection and polynomial regression to get my best model.
+```{r}
+summary(sk)
+```
+
+
+####Compare:  
+This model has the best Adjusted R-squared:  0.842(R-squared:  0.846) than other model,  
+linear regression(all predictors R-squared:  0.8458 Adjusted R-squared 0.8279)
+Lasso(R-squared: 0.844)  
+
+#### how you determine the importance of the predictors:
+
+Depend on the p-value
+
+####identify the most important predictor:  
+G2

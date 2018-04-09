@@ -1,0 +1,7 @@
+"0","cor(student$G3,student$age)"
+"1","[1]"
+"1"," -0.1615794"
+"1","
+"
+"0","library(ggplot2)"
+"0","ggplot(student,aes(x=age,y=G3))+geom_point()"

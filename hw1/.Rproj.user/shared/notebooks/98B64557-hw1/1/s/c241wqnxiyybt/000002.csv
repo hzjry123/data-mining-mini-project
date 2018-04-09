@@ -1,0 +1,4 @@
+"0","fit <- locfit(G3~lp(.,nn=0.5),data=student)"
+"2","Error in locfit(G3 ~ lp(., nn = 0.5), data = student) : 
+  could not find function ""locfit""
+"

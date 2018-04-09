@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1520621429255.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "78518818",
+    "id" : "DC361C94",
+    "lastKnownWriteTime" : 1520980270,
+    "last_content_update" : 1520980270930,
+    "path" : "~/Desktop/pitt/data mining/hw4/hw4.Rmd",
+    "project_path" : "hw4.Rmd",
+    "properties" : {
+        "cursorPosition" : "263,37",
+        "scrollLine" : "255",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

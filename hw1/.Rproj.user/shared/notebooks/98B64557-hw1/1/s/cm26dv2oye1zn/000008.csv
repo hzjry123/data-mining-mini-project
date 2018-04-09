@@ -1,0 +1,2 @@
+"0","library(ggplot2)"
+"0","ggplot(student,aes(x = G3,fill= Pstatus))+geom_density(alpha = 0.5) "

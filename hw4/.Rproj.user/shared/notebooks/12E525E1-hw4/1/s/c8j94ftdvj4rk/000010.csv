@@ -1,0 +1,2 @@
+"0","#Compare the clustering results with the party labels and identify the party members who are assigned to a seemly wrong cluster. Specifically, based on the k-means results, which Republicans are clustered together with Democrats, and vice versa? And based on the three variants (single-link, complete-link and average-link), which Republicans are clustered together with Democrats, and vice versa?"
+"0","kmeans.senator = my.kmeans(senator.scale,""stock kmeans 2"",2,label = congress$name)"

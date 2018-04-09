@@ -1,0 +1,7 @@
+"0","cor(student$G3,student$absences)"
+"1","[1]"
+"1"," 0.03424732"
+"1","
+"
+"0","library(ggplot2)"
+"0","ggplot(student,aes(x=absences,y=G3))+geom_point()"

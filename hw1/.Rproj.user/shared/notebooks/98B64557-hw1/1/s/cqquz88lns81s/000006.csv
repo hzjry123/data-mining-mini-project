@@ -1,0 +1,7 @@
+"0","cor(student$G3,student$G1)"
+"1","[1]"
+"1"," 0.8014679"
+"1","
+"
+"0","library(ggplot2)"
+"0","ggplot(student,aes(x=G1,y=G3))+geom_point()"

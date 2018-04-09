@@ -1,0 +1,2 @@
+"0","  #apply h-cluster with average link, k = 3"
+"0","  hc=my.hcluster(stock,""average"",k=3)"

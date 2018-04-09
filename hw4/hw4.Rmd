@@ -1,0 +1,275 @@
+---
+title: "hw4"
+output: html_document
+---
+#Function
+## load data
+```{r}
+library(foreign)#read dta
+load.data<-function(dataname){
+  if(dataname == "stockprice"){
+    data.url = "http://www.yurulin.com/class/spring2018_datamining/data/stock_price.csv"
+    dataset = read.csv(data.url)
+  }
+  else if(dataname == "senator"){
+    data.url = "http://www.yurulin.com/class/spring2018_datamining/data/roll_call"
+    data.files = c("sen101kh.dta", "sen102kh.dta",
+               "sen103kh.dta", "sen104kh.dta",
+               "sen105kh.dta", "sen106kh.dta",
+               "sen107kh.dta", "sen108kh_7.dta",
+               "sen109kh.dta", "sen110kh_2008.dta",
+               "sen111kh.dta","sen112kh.dta",
+               "sen113kh.dta")
+    dataset = lapply(data.files,function(f){read.dta(file.path(data.url,f),convert.factors = FALSE)})
+  }
+  dataset
+}
+```
+## PCA function
+```{r}
+#1Use PCA to reduce the dimension of stock-price information.
+#Generate a screeplot and determine the number of principle components based on this plot. 
+#Plot the loadings for first principal component
+```
+```{r}
+my.pca<-function(dataset,k=2,name="default"){
+  pca.data = prcomp(dataset[,], scale=TRUE) 
+  plot(pca.data,main=paste(name,"principle components",sep = " "))
+  #project data
+  pca.pc = predict(pca.data)
+  if(k == 2){
+    plot(pca.pc[,1:2], type="n", xlim=c(-4,5),main = paste(name,"pca result",sep = " "))
+    text(x=pca.pc[,1], y=pca.pc[,2], labels=row.names(dataset))
+  }
+  pca.pc[,1:k]
+}
+```
+##MDS function
+```{r}
+#generate mds plot
+my.mds<-function(dataset,name="default",col=c(),label=NULL){
+  dataset.dist = dist(dataset[,])
+  dataset.mds <- cmdscale(dataset.dist)
+  plot(dataset.mds, type = 'n',main = paste(name,"mds",sep = " "))
+  if(!is.null(col))col = col + 2
+  if(is.null(label))text(dataset.mds, labels=row.names(dataset), col=col)
+  else text(dataset.mds, labels=label, col=col)
+}
+```
+##K-Means
+```{r}
+# Use k-means and hierarchical clustering to group stocks. Specifically, you will generate 8 MDS maps for the stocks and color the stocks based on different clustering methods (k-means, h-clustering with single-link, h-clustering with complete-link, h-clustering with average-link) and different number of clusters (k = 3, k = 6). For each hierarchical clustering method, generate a dendrogram.
+#hint: Standardize the data before performing clustering
+my.kmeans<-function(dataset,name="default",centers=3,label = NULL){
+  set.seed(1)
+  #dataset = scale(dataset,center = T,scale = T)
+  kmeans.result = kmeans(dataset,centers = centers,nstart=10)
+  #print(order(kmeans.result$cluster))
+  #print(kmeans.result$cluster)
+  #result = data.frame(kmeans.result$cluster[o])
+  my.mds(dataset,name,col = kmeans.result$cluster,label = label)
+  kmeans.result$cluster
+}
+```
+##h-cluster
+```{r}
+my.hcluster<-function(dataset,method='average',k=3,label=NULL){
+  #dataset = scale(dataset)
+  dataset.dist = dist(dataset)
+  hc = cutree(hclust(dataset.dist,method = method),k)
+  my.mds(dataset,name = paste('h-cluster k =',k,'method = ',method,sep = " "),col = hc,label = label)
+  hc
+}
+```
+##Generate matrix
+```{r}
+rollcall.simplified <- function(df) {
+  no.pres <- subset(df, state < 99)
+  ## to group all Yea and Nay types together
+  for(i in 10:ncol(no.pres)) {
+    no.pres[,i] = ifelse(no.pres[,i] > 6, 0, no.pres[,i])
+    no.pres[,i] = ifelse(no.pres[,i] > 0 & no.pres[,i] < 4, 1, no.pres[,i])
+    no.pres[,i] = ifelse(no.pres[,i] > 1, -1, no.pres[,i])
+  }
+  return(as.matrix(no.pres[,10:ncol(no.pres)]))
+  
+}
+```
+##entropy purity
+```{r}
+cluster.purity <- function(clusters, classes) {
+  sum(apply(table(classes, clusters), 2, max)) / length(clusters)
+}
+
+cluster.entropy <- function(clusters,classes) {
+  en <- function(x) {
+    s = sum(x)
+    sum(sapply(x/s, function(p) {if (p) -p*log2(p) else 0} ) )
+  }
+  M = table(classes, clusters)
+  m = apply(M, 2, en)
+  c = colSums(M) / sum(M)
+  sum(m*c)
+}
+```
+
+
+#Task1 Main method
+##PCA mds
+```{r}
+  #load data
+  stock = t(load.data("stockprice"))
+  stock = data.frame(stock)
+  #plot pca
+  stock = scale(stock,center = T,scale = T)
+  my.pca(stock,name = "stock")
+  #plot mds
+  my.mds(stock,name="stock")
+  #apply kmeans with k = 3
+```
+##kmeans
+```{r}
+  my.kmeans(stock,"stock kmeans 3")
+  #apply kmenas with k = 6
+  my.kmeans(stock,"stock kmeans 6",6)
+```
+##hcluster
+```{r}
+#analyze the data “stock price”
+```
+
+```{r}
+  #apply h-cluster with single link, k = 3
+  hc=my.hcluster(stock,"single",k=3)
+  #apply h-cluster with single link, k = 6
+  hc=my.hcluster(stock,"single",k=6)
+  #apply h-cluster with complete link, k = 3
+  hc=my.hcluster(stock,"complete",k=3)
+  #apply h-cluster with complete link, k = 6
+  hc=my.hcluster(stock,"complete",k=6)
+  #apply h-cluster with average link, k = 3
+  hc=my.hcluster(stock,"average",k=3)
+  #apply h-cluster with average link, k = 6
+  hc=my.hcluster(stock,"average",k=6)
+```
+
+#Task2
+```{r}
+#analyze US Senator Roll Call Data
+#The objective is to identify and visualize the clustering patterns of senators’ voting activities.
+```
+```{r}
+#Create a senator-by-senator distance matrix for the 113th Congress. Generate an MDS plot to project the senators on the two dimensional space. Use shapes or colors to differentiate the senators’ party affliation
+```
+##load data
+```{r}
+  #load data
+  senator.data = load.data("senator")
+  #preprocess data
+  senator.simple = lapply(senator.data, rollcall.simplified)
+  #plot pca
+  #my.pca(senator,name = "senator")
+  #plot mds
+  #my.mds(senator,name="senator")
+  #apply kmeans with k = 3
+```
+##matrix
+```{r}
+  #senator.113dist = lapply(scale(data.frame(senator.simple[13])), function(m) dist(m %*% t(m)))
+  #my.mds(data.frame(senator.simple[13]),name="senator 113",)  
+  congress = subset(senator.data[[13]], state < 99)
+  congress.names = sapply(as.character(congress$name),
+                          function(n) strsplit(n, "[, ]")[[1]][1])
+  #assign the colors just to visualize clearly.
+  congress$party[congress$party == 100] <- 2 #republican
+  congress$party[congress$party == 200] <- 1 #democrats
+  congress$party[congress$party == 328] <- 8
+  #print(congress$party)
+  #senator.scale = scale(data.frame(senator.simple[13]),center = T,scale = T)
+  senator.scale = data.frame(senator.simple[13])
+  
+  my.mds(senator.scale,name="senator 113",col = congress$party,label = congress$name)  
+```
+green is democrats, blue is republicans, red is indenpend
+## k-means
+```{r}
+#Compare the clustering results with the party labels and identify the party members who are assigned to a seemly wrong cluster. Specifically, based on the k-means results, which Republicans are clustered together with Democrats, and vice versa? And based on the three variants (single-link, complete-link and average-link), which Republicans are clustered together with Democrats, and vice versa?
+kmeans.senator = my.kmeans(senator.scale,"stock kmeans 2",2,label = congress$name)
+```
+green is democrats, blue is republicans, red is indenpend
+
+
+```{r}
+#which Republicans are clustered together with Democrats
+print("which Republicans are clustered together with Democrats")
+congress.names[c(kmeans.senator==congress$party)==FALSE & c(congress$party ==2)]
+
+#which Democrats are clustered together with Republicans
+print("which Democrats are clustered together with Republicans")
+congress.names[c(kmeans.senator==congress$party)==FALSE & c(congress$party ==1)]
+```
+
+##hcluster k = 2 sigle link
+```{r}
+hc.single=my.hcluster(senator.scale,"single",k=2,label = congress$name)
+```
+```{r}
+print("hc.single with k = 2")
+#which Republicans are clustered together with Democrats
+print("which Republicans are clustered together with Democrats")
+congress.names[c(hc.single==congress$party)==FALSE & c(congress$party ==2)]
+
+#which Democrats are clustered together with Republicans
+print("which Democrats are clustered together with Republicans")
+congress.names[c(hc.single==congress$party)==FALSE & c(congress$party ==1)]
+```
+
+##hcluster k = 2 complete link
+```{r}
+hc.complete=my.hcluster(senator.scale,"complete",k=2,label = congress$name)
+```
+```{r}
+print("hc.complete with k = 2")
+#which Republicans are clustered together with Democrats
+print("which Republicans are clustered together with Democrats")
+congress.names[c(hc.complete==congress$party)==FALSE & c(congress$party ==2)]
+
+#which Democrats are clustered together with Republicans
+print("which Democrats are clustered together with Republicans")
+congress.names[c(hc.complete==congress$party)==FALSE & c(congress$party ==1)]
+```
+
+##hcluster k = 2 average link
+```{r}
+hc.average=my.hcluster(senator.scale,"average",k=2,label=congress$name)
+```
+```{r}
+#which Republicans are clustered together with Democrats
+print("hc.average with k = 2")
+print("which Republicans are clustered together with Democrats")
+congress.names[c(hc.average==congress$party)==FALSE & c(congress$party ==2)]
+
+#which Democrats are clustered together with Republicans
+print("which Democrats are clustered together with Republicans")
+congress.names[c(hc.average==congress$party)==FALSE & c(congress$party ==1)]
+```
+
+
+##4.Evaluation Table
+```{r}
+#Compute the purity and entropy for these clustering results with respect to the senators’ party labels. You will generate a 2x4 table as follows:
+```
+
+```{r}
+evaluation.data = list(kmeans.senator,hc.single,hc.complete,hc.average)
+evaluation.list = lapply(evaluation.data, function(f)as.matrix(c(cluster.purity(f,congress$party),cluster.entropy(f,congress$party))))
+evalutaion.table <- data.frame(lapply(evaluation.list,as.double))
+names(evalutaion.table) <- c('kmeans','hc.single','hc.complete','hc.average')
+row.names(evalutaion.table) <- c('purity','entropy')
+evalutaion.table
+```
+##5.best cluster
+```{r}
+#Based on your observation on both measures and mis-classified members, choose two clustering methods that generate the most meaningful results and explain why.
+```
+hc.complete and hc. average are two best models, with lowset entropy and highest purity

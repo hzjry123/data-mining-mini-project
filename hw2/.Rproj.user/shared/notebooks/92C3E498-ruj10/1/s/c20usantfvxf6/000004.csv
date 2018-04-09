@@ -1,0 +1,4 @@
+"0","par(mfrow=c(2,3))"
+"0","for (numeric_value in numeric_values) {"
+"0","  plot(density(german[,numeric_value]),xlab = numeric_value, main = numeric_value)"
+"0","}"

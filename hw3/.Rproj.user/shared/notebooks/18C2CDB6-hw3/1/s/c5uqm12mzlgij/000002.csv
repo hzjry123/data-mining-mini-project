@@ -1,0 +1,4 @@
+"0","#for kNN, you may include kNN-1, kNN-3, kNN-5."
+"0","#For decision tree, you may include the default tree, and a"
+"0","#tree after pruning. For SVM, you may include different"
+"0","#kernels and gamma/cost parameters."

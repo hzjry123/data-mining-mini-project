@@ -1,0 +1,4 @@
+"0","#Generate an ROC plot that plot the ROC curve of each"
+"0","#model into the same figure and include a legend to"
+"0","#indicate the name of each curve. For techniques with"
+"0","#variants, plot the best curve that has the highest AUC."

@@ -1,0 +1,6 @@
+"0","  #load data"
+"0","  stock = t(load.data(""stockprice""))"
+"0","  stock = data.frame(stock)"
+"0","  #plot pca"
+"0","  stock = scale(stock,center = T,scale = T)"
+"0","  my.pca(stock,name = ""stock"")"

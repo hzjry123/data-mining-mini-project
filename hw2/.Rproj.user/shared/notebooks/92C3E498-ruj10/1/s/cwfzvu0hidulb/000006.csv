@@ -1,0 +1,1 @@
+"0","ggplot(german,aes(x = V21,fill = V15)) + geom_bar(stat = ""count"") +facet_grid(.~V15)"

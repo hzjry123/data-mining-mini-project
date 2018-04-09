@@ -1,0 +1,2 @@
+"0","par(mfrow=c(2,3))"
+"0","plot(density(student$age), main = ""age"")"

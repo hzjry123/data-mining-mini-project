@@ -1,0 +1,2 @@
+"0","  #apply h-cluster with complete link, k = 3"
+"0","  hc=my.hcluster(stock,""complete"",k=3)"

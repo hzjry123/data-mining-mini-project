@@ -1,0 +1,2 @@
+"0","#c) For each categorical predictor, generate the conditional histogram plot of response variable."
+"0","#hint: E.g., you can use facet_grid in ggplot."

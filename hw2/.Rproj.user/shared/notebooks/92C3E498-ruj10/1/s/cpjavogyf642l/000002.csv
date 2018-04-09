@@ -1,0 +1,3 @@
+"0","#input data from url"
+"0","data.url = 'http://www.yurulin.com/class/spring2018_datamining/data/german_credit_data.csv'"
+"0","german = read.csv(file = data.url,head = TRUE, sep = ',')"

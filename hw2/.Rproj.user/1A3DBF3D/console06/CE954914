@@ -1,0 +1,9 @@
+bash: /Users/kanewakagu/.bash_profile: Permission denied
+bash: export: `=': not a valid identifier
+bash: export: `/Library/Java/JavaVirtualMachines/jdk1.8.0_131.jdk/Contents/Home': not a valid identifier
+]0;~/Desktop/pitt/data mining/hw2[?1034hjinruoyudeMacBook-Pro:hw2 JinRuoyu$ [KjinruoyudeMacBook-Pro:hw2 JinRuoyu$ bash: /Users/kanewakagu/.bash_profile: Permission denied
+bash: export: `=': not a valid identifier
+bash: export: `/Library/Java/JavaVirtualMachines/jdk1.8.0_131.jdk/Contents/Home': not a valid identifier
+[KjinruoyudeMacBook-Pro:hw2 JinRuoyu$ bash: /Users/kanewakagu/.bash_profile: Permission denied
+bash: export: `=': not a valid identifier
+bash: export: `/Library/Java/JavaVirtualMachines/jdk1.8.0_131.jdk/Contents/Home': not a valid identifier

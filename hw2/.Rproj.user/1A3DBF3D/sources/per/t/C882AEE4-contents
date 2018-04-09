@@ -1,0 +1,280 @@
+---
+title: 'Hw2: German Credit Data'
+output:
+  html_document:
+    df_print: paged
+---
+
+##Task: 
+  Analyze dataset “German Credit Data.” The objective is to predict whether the client’s credit is good or not (the binary variable V21).
+```{r}
+library(ggplot2)
+```
+
+##Task1
+
+```
+Q: Read the data description. Identify and report response variable and predictors.  
+```
+    * Response variable: V21
+    * Predictors: V1~V20
+    
+```{r}
+#input data from url
+data.url = 'http://www.yurulin.com/class/spring2018_datamining/data/german_credit_data.csv'
+german = read.csv(file = data.url,head = TRUE, sep = ',')
+```
+
+##Task2
+
+```{r}
+#Explore the dataset, and generate both statistical and graphical summary with respect to the numerical and categorical variables. (Consider only the following variables in this exploration: V1, V2, V5, V7, V10, V11, V13, V15, V16, V19 and V21.)  
+```
+
+### 2.(a)
+```{r}
+ #Qa) Generate a summary table for the data. For each numerical variable, list: variable name, mean, median, 1st quartile, 3rd quartile, and standard deviation.
+```
+
+```{r}
+#apply summary table
+numeric_values = c("V2","V5","V11","V13","V16")
+summary_table = apply(german[,numeric_values],2,summary)
+sd_table = apply(german[,numeric_values],2,sd)
+result_table = rbind(summary_table,sd_table)#通过行bind列
+result_table = t(round(result_table,2))#transform table
+result_table
+```
+### 2.(b)
+```{r}
+#For numerical variables, plot the density distribution. Describe whether the variable has a normal distribution or certain type of skew distribution.
+```
+```{r}
+par(mfrow=c(2,3))
+for (numeric_value in numeric_values) {
+  plot(density(german[,numeric_value]),xlab = numeric_value, main = numeric_value)
+}
+```
+###Answer
+In summary:  
+`V2` doesn't have a normal distribution or a certain skew type;  
+`V5` is skewed to the right;   
+`V11` doesn't have a normal distribution or a certain skew type;
+`V13` is skewed to right;  
+`V16` doesn't have a normal distribution or a certain skew type;
+
+###2.(c)
+```{r}
+#c) For each categorical predictor, generate the conditional histogram plot of response variable.
+#hint: E.g., you can use facet_grid in ggplot.
+```
+```{r}
+par(mfrow=c(2,3))
+cat_vals = c("V1","V7","V10","V15","V19","V21")
+ggplot(german,aes(x = V21,fill = V1)) + geom_bar(stat = "count") +facet_grid(.~V1)
+```
+```{r}
+ggplot(german,aes(x = V21,fill = V7)) + geom_bar(stat = "count") +facet_grid(.~V7)
+```
+
+```{r}
+ggplot(german,aes(x = V21,fill = V10)) + geom_bar(stat = "count") +facet_grid(.~V10)
+```
+
+```{r}
+ggplot(german,aes(x = V21,fill = V15)) + geom_bar(stat = "count") +facet_grid(.~V15)
+```
+
+```{r}
+ggplot(german,aes(x = V21,fill = V19)) + geom_bar(stat = "count") +facet_grid(.~V19)
+```
+
+##Task3
+```{r}
+#Apply logistic regression analysis to predict V21. Evaluate the models through cross-validation and on holdout samples. Interpret the effect of the predictors.
+```
+###3.(a)
+```{r}
+#Implement a 10-fold cross-validation scheme by splitting the data into training and testing sets. Use the training set to train a logistic regression model to predict the response variable. Examine the performance of different models by varing the number of predictors. Report the performance of the models on testing set using proper measures (accuracy, precision, recall, F1) and plots (ROC, lift).
+```
+##Data Clean
+```{r}
+library(car)
+suppressMessages( library(textir) )
+#recode V21 = 2 to 0
+german$V21 = recode(german$V21,"1=1;else=0")
+#recode qualitive value
+numerical_col = c(2,5,8,11,13,16,18)
+data_numerical = german[,numerical_col]
+data_qualitive = german[,-numerical_col]
+
+#recode qualitive value
+data_transform = model.matrix(V21~.,data=data_qualitive)[,-1]
+#normalize numerical value
+#data_normalize = scale(data_numerical[,])
+german_new <- cbind(data_numerical,data_transform)
+```
+
+```{r}
+#ROC
+library(ROCR)
+library(pROC)
+Curve.Roc<- function(ptest,ytest){
+  ## ROC for hold-out period
+  data = data.frame(predictions=ptest,labels=ytest)
+  ## pred: function to create prediction objects
+  pred <- prediction(data$predictions,data$labels)
+  ## perf: creates the input to be plotted
+  ## sensitivity (TPR) and one minus specificity (FPR)
+  perf <- performance(pred, "sens", "fpr")
+  plot(perf)
+  area <- auc(data$labels,data$predictions)
+  area <- format(round(area, 4), nsmall = 4)
+  text(x=0.8, y=0.1, labels = paste("AUC =", area))
+  segments(x0=0, y0=0, x1=1, y1=1, col="gray", lty=2)
+}
+```
+
+```{r}
+#Lift
+Curve.Lift<-function(ptest,ytest){
+  df=cbind(ptest,ytest)
+  rank.df=as.data.frame(df[order(ptest,decreasing=TRUE),])
+  colnames(rank.df) = c('predicted','actual')
+  baserate=mean(ytest)
+  ## calculating the lift
+  ## cumulative 1's sorted by predicted values
+  ## cumulative 1's using the average success prob from evaluation set
+  n.test = 100
+  ax=dim(n.test)
+  ay.base=dim(n.test)
+  ay.pred=dim(n.test)
+  ax[1]=1
+  ay.base[1]=baserate
+  ay.pred[1]=rank.df$actual[1]
+  for (i in 2:n.test) {
+    ax[i]=i
+    ay.base[i]=baserate*i ## uniformly increase with rate xbar
+    ay.pred[i]=ay.pred[i-1]+rank.df$actual[i]
+  }
+  
+  df=cbind(rank.df,ay.pred,ay.base)
+  plot(ax,ay.pred,xlab="number of cases",ylab="number of successes",main="Lift: Cum successes sorted by pred val/success prob")
+  points(ax,ay.base,type="l")
+}
+```
+
+```{r}
+my_model<-function(proportion){
+  set.seed(88)
+  fold_length = nrow(german)/10
+  precision = 0
+  accuracy = 0
+  recall = 0
+  F1 = 0
+  best_recall = 0
+  best_vary = c()
+  best_precision = 0
+  best_accuracy = 0
+  best_F1 = 0
+  best_feature = c()
+  german_new = data.frame(german_new)
+  #define the proportion of predictors taken into training
+  for(i in c(rep(proportion,5))){
+    #define feature for training
+    feature = sample(1:length(german_new),floor(length(german_new) * i))
+    accuracy = 0
+    precision = 0
+    recall = 0
+    F1 = 0
+    #kfold
+    for(j in 1: 10){
+      #define data row for training
+      #set 900 for train and validate, 901-1000 for test
+      start_pos = 90*(j -1) + 1
+      end_pos = 90*j
+      data_sample = start_pos:end_pos
+      #split training and test data
+      xtrain = german_new[-data_sample,feature]
+      ytrain = german$V21[-data_sample]
+      xtest = german_new[data_sample,feature]
+      ytest = german$V21[data_sample]
+      #fit the logisitc model
+      ml = glm(V21~.,family=binomial,data=data.frame(V21=ytrain,xtrain))
+      #predict
+      ptest = predict(ml,newdata=data.frame(xtest),type="response")
+      #use floor function to clamp the value to 0 or 1
+      btest=floor(ptest+0.5)  
+      #get confusion matrix
+      conf.matrix = table(ytest,btest)
+      #get precision
+      precision = precision + conf.matrix[2,2] / (conf.matrix[2,2]+conf.matrix[1,2])
+      #get accuracy
+      accuracy = accuracy + (conf.matrix[1,1] + conf.matrix[2,2]) / 100
+      #get recall
+      recall = recall + conf.matrix[2,2] / (conf.matrix[2,2]+conf.matrix[2,1])
+      #get F1
+      F1 = F1 + 2 * precision * recall / (precision + recall)
+    }
+      if(recall/10 > best_recall){
+        best_feature = feature
+        best_conf.matrix = conf.matrix
+        best_recall = recall/10
+        best_vary = i
+        best_precision = precision/10
+        best_F1 = F1/10
+        best_accuracy = accuracy/10
+      }
+        
+  }
+  best_model = glm(V21~.,family=binomial,data=data.frame(V21=german$V21,german_new[,sort(best_feature)]))
+  #set 901 - 1000 for test
+  ptest = predict(best_model,newdata=data.frame(german_new[901:1000,]),type="response")
+  Curve.Lift(ptest,german$V21[901:1000])
+  Curve.Roc(ptest,german$V21[901:1000])
+  print(best_conf.matrix)
+  print(rbind(best_recall,best_precision,best_F1,best_accuracy))
+  return(best_feature)
+}
+```
+##First Model use All predictors
+```{r}
+feature.1 = my_model(1)
+```
+##Second Model use 90% predictors
+```{r}
+feature.9 = my_model(0.9)
+```
+##Third Model use 80% predictors
+```{r}
+feature.8 = my_model(0.8)
+```
+##4th Model use 70% predictors
+```{r}
+feature.7 = my_model(0.7)
+```
+```{r}
+#compute the odds ratio and interpret the effect of each predictors.
+```
+
+###Answer
+As the data description said "It is worse to class a customer as good when they are bad, than it is to class a customer as bad when they are good ". So I think the best model should focus on both of FPR and TPR, so I use AUC to decide best Model.  
+So the best model is 90% feature model.
+
+```{r}
+
+best_model = glm(V21~.,family=binomial,data=data.frame(V21=german$V21,german_new[,sort(feature.9)]))
+summary(best_model)
+```
+Effect of Predictors: 
+For each predictor, lower P value means it is more important to the model.
+
+```{r}
+#For the best model, compute the odds ratio and interpret the effect of each predictors.
+exp(best_model$coefficients)
+```
+odds: p/(1-p)
+p: probability of Good 
+1-p: probability of Bad
+if odds ratio < 1. Take V8 for example, odds ratio 0.72 here means if we change X8 to X8+1. It will reduce the odds by (1-0.72)\*100% = 18%, the man will pay the credict's probability drop will drop. If the odds is smaller, probablility of good will drop more.  
+if odds ratio > 1. Take V20A202 for example, odds ratio 3.70 here means if we change X20A202 to X20A202+1. It will increase the odds by (3.70 - 1)\*100% = 270%, the man will pay the credict's probability drop will increase If the odds is bigger, probablility of good will increase more.  

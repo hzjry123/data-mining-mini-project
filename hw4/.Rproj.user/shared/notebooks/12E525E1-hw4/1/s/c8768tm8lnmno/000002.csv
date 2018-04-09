@@ -1,0 +1,7 @@
+"0","my.hcluster<-function(dataset,method='average',k=3,label=NULL){"
+"0","  #dataset = scale(dataset)"
+"0","  dataset.dist = dist(dataset)"
+"0","  hc = cutree(hclust(dataset.dist,method = method),k)"
+"0","  my.mds(dataset,name = paste('h-cluster k =',k,'method = ',method,sep = "" ""),col = hc,label = label)"
+"0","  hc"
+"0","}"

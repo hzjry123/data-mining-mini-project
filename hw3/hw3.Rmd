@@ -1,0 +1,351 @@
+---
+title: "Hw3"
+output: html_document
+---
+
+#Ruoyu Jin
+Apply logistic regression, kNN, Naive Bayesian, decision
+tree, SVM, and Ensemble methods on Pokemon dataset
+
+##Import library
+```{r}
+library(glmnet)#for penalize logistic regression
+library("arm")
+library(class) #for knn
+library(MASS) # for the example dataset 
+library(plyr) # for recoding data
+library(ROCR) # for plotting roc
+library(e1071) # for NB and SVM
+library(rpart) # for decision tree
+library(ada) # for adaboost
+library(ggplot2)
+```
+##classification
+```{r}
+#for kNN, you may include kNN-1, kNN-3, kNN-5.
+#For decision tree, you may include the default tree, and a
+#tree after pruning. For SVM, you may include different
+#kernels and gamma/cost parameters.
+```
+
+```{r}
+do.classification <- function(train.set, test.set, 
+                              cl.name, knum,tune = F,verbose=F) {
+  ## note: to plot ROC later, we want the raw probabilities,
+  ## not binary decisions
+
+  switch(cl.name, 
+         knn = {#set key by pass knum
+             prob = knn(train.set[,-1], test.set[,-1], cl=train.set[,1], k = knum, prob=T)
+             prob = attr(prob,"prob")
+             prob
+         },
+         lr = { # logistic regression
+           #set glmnet for penalize logistic regression to avoid overfitting
+           model = glmnet(as.matrix(train.set[-ncol(train.set)]),as.matrix(train.set[ncol(train.set)]),family="binomial",alpha=0,lambda=1/100,  standardize=F,thresh =1e-8,intercept = F)
+           if (verbose) {
+             print(summary(model))             
+           }
+            prob = predict(model, newx=as.matrix(test.set[-ncol(test.set)]), type="response") 
+           prob
+         },
+         nb = {#naive bayes model
+           model = naiveBayes(y~., data=train.set)
+           prob = predict(model, newdata=test.set, type="raw") 
+           prob = prob[,2]/rowSums(prob) # renormalize the prob.
+           prob
+         },
+         dtree = {
+           model = rpart(y~., data=train.set)
+           if (verbose) {
+             print(summary(model)) # detailed summary of splits
+             printcp(model) # print the cross-validation results
+             plotcp(model) # visualize the cross-validation results
+             ## plot the tree
+             plot(model, uniform=TRUE, main="Classification Tree")
+             text(model, use.n=TRUE, all=TRUE, cex=.8)
+           }           
+           prob = predict(model, newdata=test.set)
+           
+           if (tune) { 
+             ## prune the tree 
+             pfit<- prune(model, cp=model$cptable[which.min(model$cptable[,"xerror"]),"CP"])
+             prob = predict(pfit, newdata=test.set)
+             ## plot the pruned tree 
+             #plot(pfit, uniform=TRUE,main="Pruned Classification Tree")
+             #text(pfit, use.n=TRUE, all=TRUE, cex=.8)             
+           }
+           #print(cbind(prob,as.character(test.set$y)))
+           prob
+         },
+         svm.radial = {#svm with kernel radial
+           #alredy get best gamma and cost in grid search
+           model = svm(y~., data = train.set, probability=T, 
+                         kernel="radial", gamma=0.01, cost=10,scale = FALSE)    
+           if (0) { # fine-tune the model with different kernel and parameters
+             ## evaluate the range of gamma parameter between 0.000001 and 0.1
+             ## and cost parameter from 0.1 until 10
+             tuned <- tune.svm(y~., data = train.set, 
+                               kernel="radial", 
+                               gamma = 10^(-6:-1), cost = 10^(-1:2))
+             print(summary(tuned))
+             gamma = tuned[['best.parameters']]$gamma
+             cost = tuned[['best.parameters']]$cost
+             model = svm(y~., data = train.set, probability=T, 
+                         kernel="radial", gamma=gamma, cost=cost,scale = FALSE)                        
+           }
+           prob = predict(model, newdata=test.set, probability=T)
+           prob
+         },
+         svm.sigmoid = {#svm with kernel sigmoid
+           model = svm(y~., data=train.set, probability=T,scale = FALSE,kernel="sigmoid",gamma = 0.01, cost =10)
+           if (0) { # fine-tune the model with different kernel and parameters
+             ## evaluate the range of gamma parameter between 0.000001 and 0.1
+             ## and cost parameter from 0.1 until 10
+             tuned <- tune.svm(y~., data = train.set, 
+                               kernel="sigmoid", 
+                               gamma = 10^(-2:-1), cost = 10^(-1:2),coef0 = 10^(-1:1))
+             #print(summary(tuned))
+             gamma = tuned[['best.parameters']]$gamma
+             cost = tuned[['best.parameters']]$cost
+             coef0 = tuned[['best.parameters']]$coef0
+             model = svm(y~., data = train.set, probability=T, 
+                         kernel="sigmoid", gamma=gamma, cost=cost,coef0 = coef0,scale = FALSE)                        
+           }
+           prob = predict(model, newdata=test.set, probability=T)
+           prob
+         },
+         ada = {
+           model = ada(y~., data = train.set)
+           prob = predict(model, newdata=test.set, type='probs')
+           #print(cbind(prob,as.character(test.set$y)))
+           prob = prob[,2]/rowSums(prob)
+           prob
+         }
+  ) 
+}
+```
+
+##10fold
+```{r}
+k.fold.cv <- function(dataset, cl.name,knum = 1,tune=F,k.fold=10, prob.cutoff=0.5) {
+  ## default: 10-fold CV, cut-off 0.5 
+  n.obs <- nrow(dataset) # no. of observations 
+  s = sample(n.obs)
+  errors = dim(k.fold)
+  probs = NULL
+  actuals = NULL
+  share = dim(dataset_new)[1] / k.fold
+  for (k in 1:k.fold) {
+    #set train and test dataset
+    #set start index
+    start_pos = share * (k -1) + 1
+    #set end index
+    end_pos = share * k
+    #get test interval
+    test.idx = start_pos:end_pos
+    train.set = dataset[-test.idx,]
+    test.set = dataset[test.idx,]
+    #get prob of predict
+    prob = do.classification(train.set, test.set, cl.name,knum,tune)
+    #use cutoff to binarize probability
+    predicted = as.numeric(prob > prob.cutoff)
+    #set actual value of test set
+    actual = test.set$y
+    #generate confusion matrix
+    confusion.matrix = table(actual,factor(predicted,levels=c(0,1)))
+    confusion.matrix
+    error = (confusion.matrix[1,2]+confusion.matrix[2,1]) / nrow(test.set)  
+    errors[k] = error
+    #set predict probability
+    probs = c(probs,prob)
+    #set actual labels
+    actuals = c(actuals,actual)
+  }
+  #get avg error
+  avg.error = mean(errors)
+
+  #get pred with prediction function
+  pred = prediction(probs,actuals)
+  pred
+}
+```
+
+##Get mesure matrix
+```{r}
+get.measure.matrix <- function(pred,name){
+  ## get other measures by using 'performance'
+  #slot function return or set information about the individual slots in an object pred.
+  get.measure <- function(pred, measure.name='auc') {
+    perf = performance(pred,measure.name)
+    m <- unlist(slot(perf, "y.values"))
+    m
+  }
+  err = mean(get.measure(pred, 'err'))
+  accuarcy = 1 - err;
+  #na.rm a logical value indicating whether NA values should be stripped before the computation proceeds.
+  precision = mean(get.measure(pred, 'prec'),na.rm=T)
+  recall = mean(get.measure(pred, 'rec'),na.rm=T)
+  fscore = mean(get.measure(pred, 'f'),na.rm=T)
+  #cat('error=',err,'precision=',precision,'recall=',recall,'f-score',fscore,'\n')
+  auc = get.measure(pred, 'auc')
+  #cat('auc=',auc,'\n')
+  #row bind all measure
+  measure.matrix = rbind(accuarcy,precision,recall,fscore,auc);
+  #assign the col name of model
+  colnames(measure.matrix) <- c(name)
+  measure.matrix
+}
+```
+
+##load data
+```{r}
+load.data.pokemon <- function() {
+  data.url = 'http://www.yurulin.com/class/spring2018_datamining/data/pokemon/pokemon.csv'
+  #user c style to get data
+  dataset <- read.csv(data.url)
+  dataset
+}
+```
+##Data Clean
+```{r}
+load.data.clean <- function(dataset){
+  library(car)
+  suppressMessages(library(textir))
+  #record qualititve column
+  qualitive_col = c(3,4,11,12,13)
+  #record numerical column
+  numerical_col = c(5,6,7,8,9,10)
+  data_numerical = dataset[,numerical_col]
+  data_qualitive = dataset[,qualitive_col]
+  #recode qualitive value
+  data_transform = model.matrix(~.,data=data_qualitive)[,-1]
+  #normalize numerical value
+  data_normalize = scale(data_numerical)
+  #column bind normalize numerical data and recode qualitive data
+  dataset_new <- cbind(data_normalize,data_transform)
+  #rename the 'Total'
+  colnames(dataset_new)[ncol(dataset_new)] <- "y"
+  #return value
+  data.frame(dataset_new)
+}
+```
+##Get predictions
+```{r}
+#get the predictions from [predict,actual]
+get.predictions <- function(pred){
+  list.pred = slot(pred,"predictions")[[1]]
+ # predictions = matrix(unlist(list.pred), ncol = 1, byrow = TRUE)
+  list.pred
+}
+```
+##Grid search
+```{r}
+grid.search <- function(dataset_new){
+  #try different gamma and cost for svm radial and get the best gamma and cost
+  #get the best gamma and cost of svm
+  tuned <- tune.svm(y~., data = dataset_new, 
+                   kernel="radial", 
+                   gamma = 10^(-6:-1), cost = 10^(-1:2))
+  print(summary(tuned))
+  #tuned[['best.parameters']]$gamma
+  #tuned[['best.parameters']]$cost
+}
+```
+
+##Measure Table
+Use a 10-fold cross-validation to evaluate different
+classification techniques. Report your 10-fold CV
+classification results in a performance table. In the table,
+report the values of different performance measures for
+each classification technique. For example, you will
+generate a table like:
+```{r}
+### main ###
+dataset = load.data.pokemon()
+dataset_new = load.data.clean(dataset)
+#get best gamma and cost for svm
+grid.search(dataset_new)
+#get all [predictions,actual]
+pred.lr = k.fold.cv(dataset_new,'lr')
+pred.knn1 = k.fold.cv(dataset_new,'knn',1)
+pred.knn3 = k.fold.cv(dataset_new,'knn',3)
+pred.knn5 = k.fold.cv(dataset_new,'knn',5)
+pred.nb = k.fold.cv(dataset_new, 'nb')
+pred.svm.radial = k.fold.cv(dataset_new, 'svm.radial',tune = T)
+pred.svm.sigmoid = k.fold.cv(dataset_new, 'svm.sigmoid',tune = T)
+pred.dtree.default = k.fold.cv(dataset_new, 'dtree')
+pred.dtree.prune = k.fold.cv(dataset_new, 'dtree',tune = T)
+pred.ada = k.fold.cv(dataset_new,'ada')
+
+#get all models measure matrixes
+mat.lr = get.measure.matrix(pred.lr,'lr')
+mat.knn1 = get.measure.matrix(pred.knn1,'knn1')
+mat.knn3 = get.measure.matrix(pred.knn3,'knn3')
+mat.knn5 = get.measure.matrix(pred.knn5,'knn5')
+mat.nb = get.measure.matrix(pred.nb,'nb')
+mat.svm.radial = get.measure.matrix(pred.svm.radial,'svm_radial')
+mat.svm.sigmoid = get.measure.matrix(pred.svm.sigmoid,'svm_sigmoid')
+mat.dtree.default = get.measure.matrix(pred.dtree.default,'dtree_default')
+mat.dtree.prune = get.measure.matrix(pred.dtree.prune,'dtree_prune')
+mat.ada = get.measure.matrix(pred.ada,'ada')
+#show measrure matrix
+mat.all = cbind(mat.lr,mat.knn1,mat.knn3,mat.knn5,mat.nb,mat.svm.radial,mat.svm.sigmoid,mat.dtree.default,mat.dtree.prune,mat.ada)
+mat.all
+
+```
+##bar chart
+###AUC
+```{r}
+#Generate two bar charts, one for F-score and one for AUC,that allow for visually comparing different classificationtechniques.
+#generate plot data
+data.plot = data.frame(model = c('lr','knn1','knn3','knn5','nb','svm.radial','svm.sigmoid','dtree.default','dtree.prune','ada'), auc = c(mat.lr[5],mat.knn1[5],mat.knn3[5],mat.knn5[5],mat.nb[5],mat.svm.radial[5],mat.svm.sigmoid[5],mat.dtree.default[5],mat.dtree.prune[5],mat.ada[5]))
+ggplot(data.plot,aes(model,auc,fill = model)) + geom_bar(stat = "identity") + ggtitle("AUC Bar")
+```
+###FScore
+```{r}
+data.plot = data.frame(model = c('lr','knn1','knn3','knn5','nb','svm.radial','svm.sigmoid','dtree.default','dtree.prune','ada'), fscore = c(mat.lr[4],mat.knn1[4],mat.knn3[4],mat.knn5[4],mat.nb[4],mat.svm.radial[4],mat.svm.sigmoid[4],mat.dtree.default[4],mat.dtree.prune[4],mat.ada[4]))
+ggplot(data.plot,aes(model,fscore,fill = model)) + geom_bar(stat = "identity") + ggtitle("FScore")
+```
+
+##Plot Roc
+```{r}
+#Generate an ROC plot that plot the ROC curve of each
+#model into the same figure and include a legend to
+#indicate the name of each curve. For techniques with
+#variants, plot the best curve that has the highest AUC.
+```
+
+```{r}
+## plot ROC
+#get all predictions with function get.predictions
+preds_list = list(get.predictions(pred.lr),get.predictions(pred.knn3),get.predictions(pred.nb),get.predictions(pred.dtree.default),get.predictions(pred.svm.radial),get.predictions(pred.ada))
+#generate acutal list with repeat ataset_new$y m(best model times)
+m <- length(preds_list)
+actuals_list <- rep(list(dataset_new$y), m)
+#generate prediction object to plot ROC curve with package ROCR
+predss = prediction(preds_list,actuals_list)
+
+perf = performance(predss, "tpr","fpr")
+#plot curve
+plot(perf,col = as.list(1:m), main = "Test Set ROC Curves")
+legend(x = "bottomright",c("lr","knn3","nb","dtree default","svm radial",'ada'),fill = 1 : m)
+  
+```
+##Summary
+```{r}
+#Summarize the model performance based on the table and
+#the ROC plot in one or two paragraphs.
+```
+According the table and roc curve, ada is the best model with best fscore and auc, while roc lr and svm are the top3 model, both have high f-measure and auc.
+knn perform worst in this binary problem.
+Tree default and Tree trune perform quite same, knn with different neighbors perform quite same.
+
+
+
+
+
+
+
+
+
